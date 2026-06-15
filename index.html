@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Haematology Disease Classification System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --input-bg: rgba(255,255,255,0.05);
+            --border: rgba(255,255,255,0.1);
+            --danger: #ef4444;
+            --success: #4ade80;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:'Outfit',sans-serif;
+            background:radial-gradient(ellipse at top left,#1e293b,#0f172a 60%);
+            color:var(--text);
+            min-height:100vh;
+        }
+
+        /* --- NAV --- */
+        nav {
+            background:rgba(15,23,42,0.85);
+            backdrop-filter:blur(16px);
+            border-bottom:1px solid var(--border);
+            padding:0 30px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            height:64px;
+            position:sticky;top:0;z-index:100;
+        }
+        .nav-brand {
+            font-weight:700;font-size:1.1rem;
+            background:linear-gradient(135deg,#818cf8,#c084fc);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+        }
+        .nav-links { display:flex; gap:6px; }
+        .nav-links button {
+            background:none;border:1px solid transparent;color:#94a3b8;
+            padding:8px 18px;border-radius:10px;font-family:inherit;font-size:.9rem;
+            cursor:pointer;transition:.25s;font-weight:500;
+        }
+        .nav-links button:hover { color:#e2e8f0;background:rgba(255,255,255,.05); }
+        .nav-links button.active {
+            color:#fff;background:linear-gradient(135deg,var(--primary),var(--secondary));
+            border-color:transparent;
+        }
+
+        /* --- PAGE SECTIONS --- */
+        .page { display:none; padding:40px 20px; max-width:1100px; margin:0 auto; animation:fadeIn .4s ease; }
+        .page.active { display:block; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+        /* --- SHARED --- */
+        h1.page-title {
+            font-size:2.2rem;font-weight:700;margin-bottom:8px;
+            background:linear-gradient(135deg,#818cf8,#c084fc);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+        }
+        .page-subtitle { color:#94a3b8;font-size:1rem;margin-bottom:35px; }
+        .glass-card {
+            background:var(--card-bg);backdrop-filter:blur(12px);
+            border:1px solid var(--border);border-radius:20px;
+            padding:30px;transition:transform .3s,box-shadow .3s;
+            box-shadow:0 8px 30px rgba(0,0,0,.25);
+        }
+        .glass-card:hover { transform:translateY(-4px);box-shadow:0 16px 40px rgba(99,102,241,.15); }
+        .btn {
+            padding:14px 28px;border-radius:12px;border:none;font-weight:600;
+            font-size:1rem;cursor:pointer;font-family:inherit;transition:.25s;
+            display:inline-flex;align-items:center;gap:10px;
+        }
+        .btn-primary { background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff; }
+        .btn-primary:hover { opacity:.9;transform:scale(1.02); }
+        .btn-outline { background:none;border:1px solid var(--border);color:#e2e8f0; }
+        .btn-outline:hover { background:rgba(255,255,255,.05); }
+        .input-group { display:flex;flex-direction:column;gap:6px; }
+        .input-group label { font-size:.85rem;color:#94a3b8;font-weight:600; }
+        .input-group input, .input-group select {
+            background:var(--input-bg);border:1px solid var(--border);
+            border-radius:10px;padding:12px 14px;color:#fff;font-family:inherit;
+            font-size:.95rem;outline:none;transition:border .3s;
+        }
+        .input-group input:focus { border-color:var(--primary); }
+
+        /* ======== PAGE 1: HOME DASHBOARD (Figure 13) ======== */
+        .hero-section { text-align:center;padding:60px 20px 40px; }
+        .hero-section h1 { font-size:2.8rem;margin-bottom:12px; }
+        .hero-section p { color:#94a3b8;font-size:1.1rem;max-width:600px;margin:0 auto 50px; }
+        .action-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:25px;max-width:960px;margin:0 auto; }
+        .action-card { text-align:center;padding:40px 25px;cursor:pointer; }
+        .action-card .icon {
+            width:72px;height:72px;border-radius:18px;display:flex;align-items:center;
+            justify-content:center;margin:0 auto 20px;font-size:2rem;
+        }
+        .icon-blood { background:rgba(239,68,68,.15);color:#fca5a5; }
+        .icon-tissue { background:rgba(59,130,246,.15);color:#93c5fd; }
+        .icon-marrow { background:rgba(168,85,247,.15);color:#d8b4fe; }
+        .action-card h3 { font-size:1.25rem;color:#e2e8f0;margin-bottom:8px; }
+        .action-card p { color:#64748b;font-size:.9rem;line-height:1.5; }
+
+        /* ======== PAGE 2: PREDICTION (Figure 14) ======== */
+        .predict-layout { display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start; }
+        @media(max-width:768px){ .predict-layout{grid-template-columns:1fr;} }
+        .upload-zone {
+            border:2px dashed var(--border);border-radius:16px;padding:30px;
+            text-align:center;cursor:pointer;transition:.3s;min-height:260px;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+        }
+        .upload-zone:hover { border-color:var(--primary);background:rgba(99,102,241,.04); }
+        .upload-zone img { max-width:100%;max-height:220px;border-radius:12px;margin-bottom:12px; }
+        .upload-zone .placeholder-text { color:#64748b;font-size:.95rem; }
+        input[type="file"] { display:none; }
+        .result-panel { padding:20px;background:rgba(255,255,255,.04);border-radius:14px;display:none;margin-top:20px;animation:fadeIn .5s; }
+        .result-prediction { font-size:1.35rem;font-weight:700;margin-bottom:4px; }
+        .confidence-bar { height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin:12px 0; }
+        .confidence-fill { height:100%;border-radius:4px;width:0%;transition:width 1s ease; }
+        .loader { width:20px;height:20px;border:3px solid rgba(255,255,255,.2);border-radius:50%;border-top-color:#fff;animation:spin 1s linear infinite;display:none; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .test-type-tabs { display:flex;gap:8px;margin-bottom:25px; }
+        .test-type-tabs button {
+            padding:10px 22px;border-radius:10px;border:1px solid var(--border);
+            background:none;color:#94a3b8;font-family:inherit;font-size:.9rem;
+            cursor:pointer;transition:.2s;font-weight:500;
+        }
+        .test-type-tabs button.active { background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border-color:transparent; }
+
+        /* ======== PAGE 3: PATIENT REGISTRATION (Figure 15) ======== */
+        .reg-form { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+        @media(max-width:600px){ .reg-form{grid-template-columns:1fr;} }
+        .reg-form .full-width { grid-column:1/-1; }
+        .guidelines-box {
+            background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);
+            border-radius:14px;padding:20px;margin-bottom:28px;
+        }
+        .guidelines-box h3 { color:#a5b4fc;font-size:1rem;margin-bottom:10px; }
+        .guidelines-box ul { color:#94a3b8;font-size:.9rem;padding-left:18px;line-height:1.8; }
+
+        /* ======== PAGE 4: HISTORY (Figure 16) ======== */
+        .history-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px; }
+        .table-wrap { overflow-x:auto;border-radius:16px;border:1px solid var(--border);background:var(--card-bg);backdrop-filter:blur(12px); }
+        table { width:100%;border-collapse:collapse;text-align:left;min-width:700px; }
+        thead { background:rgba(255,255,255,.04); }
+        th,td { padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);font-size:.9rem; }
+        th { color:#94a3b8;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px; }
+        td { color:#cbd5e1; }
+        tr:hover td { background:rgba(255,255,255,.02); }
+        .badge { display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600; }
+        .badge-positive { background:rgba(239,68,68,.15);color:#fca5a5; }
+        .badge-negative { background:rgba(74,222,128,.12);color:#86efac; }
+        .empty-state { text-align:center;padding:50px;color:#64748b; }
+    </style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+    <div class="nav-brand">OncoTech CDSS</div>
+    <div class="nav-links">
+        <button class="active" onclick="showPage('home',this)">🏠 Home</button>
+        <button onclick="showPage('register',this)">📋 Register Patient</button>
+        <button onclick="showPage('predict',this)">🔬 Analyze</button>
+        <button onclick="showPage('history',this)">📊 History</button>
+    </div>
+</nav>
+
+<!-- ==================== PAGE 1: HOME DASHBOARD (Figure 13) ==================== -->
+<div id="page-home" class="page active">
+    <div class="hero-section">
+        <h1 class="page-title">Automated Haematology Disease Classification System</h1>
+        <p>AI-powered diagnostic assistance for peripheral blood smears, tissue biopsies, and bone marrow aspirates. Select an analysis type below to begin.</p>
+        <div class="action-grid">
+            <div class="glass-card action-card" onclick="startAnalysis('blood')">
+                <div class="icon icon-blood">🩸</div>
+                <h3>Analyze Blood Smear</h3>
+                <p>Upload peripheral blood smear images to screen for Leukaemia blast cells.</p>
+            </div>
+            <div class="glass-card action-card" onclick="startAnalysis('tissue')">
+                <div class="icon icon-tissue">🔬</div>
+                <h3>Analyze Tissue</h3>
+                <p>Upload lymph node tissue slides for Lymphoma subtype classification (CLL, FL, MCL).</p>
+            </div>
+            <div class="glass-card action-card" onclick="startAnalysis('myeloma')">
+                <div class="icon icon-marrow">🦴</div>
+                <h3>Analyze Bone Marrow</h3>
+                <p>Upload bone marrow aspirate images to detect Multiple Myeloma plasma cells.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PAGE 2: PREDICTION INTERFACE (Figure 14) ==================== -->
+<div id="page-predict" class="page">
+    <h1 class="page-title">Prediction Interface</h1>
+    <p class="page-subtitle">Upload a microscopic image to receive an AI-assisted diagnostic prediction.</p>
+
+    <div class="test-type-tabs">
+        <button class="active" onclick="switchTestType('blood',this)">🩸 Blood Smear</button>
+        <button onclick="switchTestType('tissue',this)">🔬 Tissue Biopsy</button>
+        <button onclick="switchTestType('myeloma',this)">🦴 Bone Marrow</button>
+    </div>
+
+    <div class="predict-layout">
+        <!-- Left: Upload & Preview -->
+        <div class="glass-card">
+            <h3 style="color:#e2e8f0;margin-bottom:15px;" id="uploadCardTitle">Blood Smear Upload</h3>
+            <label class="upload-zone" for="predictFile" id="uploadZone">
+                <div id="imagePreview">
+                    <div class="placeholder-text">📁 Click or drag to upload microscopic image<br><span style="font-size:.8rem;color:#475569">JPG, PNG up to 10MB</span></div>
+                </div>
+                <input type="file" id="predictFile" accept="image/*" onchange="previewImage(this)">
+            </label>
+            <div style="margin-top:18px;">
+                <button class="btn btn-primary" style="width:100%" onclick="runPrediction()">
+                    <span id="predictBtnText">Run Diagnostic</span>
+                    <div class="loader" id="predictLoader"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Results -->
+        <div class="glass-card">
+            <h3 style="color:#e2e8f0;margin-bottom:15px;">Diagnostic Result</h3>
+            <div id="predictResult" style="color:#64748b;font-size:.95rem;">
+                Upload an image and click "Run Diagnostic" to see results here.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PAGE 3: PATIENT REGISTRATION (Figure 15) ==================== -->
+<div id="page-register" class="page">
+    <h1 class="page-title">Patient Registration</h1>
+    <p class="page-subtitle">Enter patient metadata for longitudinal tracking in the SQLite database.</p>
+
+    <div class="guidelines-box">
+        <h3>📌 Data Entry Guidelines</h3>
+        <ul>
+            <li><strong>Hospital Number:</strong> Use the format <code style="color:#a5b4fc">H-XXXXXX</code> (e.g., H-123456). Must be unique per patient.</li>
+            <li><strong>Age:</strong> Enter the patient's age in whole years at the time of consultation.</li>
+            <li><strong>Date of Birth:</strong> Select the exact date. Used for age verification and cohort studies.</li>
+            <li><strong>Address:</strong> Full residential address for follow-up correspondence.</li>
+        </ul>
+    </div>
+
+    <div class="glass-card">
+        <div class="reg-form">
+            <div class="input-group">
+                <label>Hospital Number *</label>
+                <input type="text" id="regHospitalNo" placeholder="e.g. H-123456">
+            </div>
+            <div class="input-group">
+                <label>Age *</label>
+                <input type="number" id="regAge" placeholder="Years" min="0" max="150">
+            </div>
+            <div class="input-group">
+                <label>Date of Birth *</label>
+                <input type="date" id="regDob">
+            </div>
+            <div class="input-group">
+                <label>Patient Address</label>
+                <input type="text" id="regAddress" placeholder="Full residential address">
+            </div>
+            <div class="full-width" style="margin-top:10px;display:flex;gap:12px;">
+                <button class="btn btn-primary" onclick="registerPatient()">💾 Save Patient Record</button>
+                <button class="btn btn-outline" onclick="clearRegForm()">Clear Form</button>
+            </div>
+        </div>
+        <div id="regStatus" style="margin-top:16px;display:none;padding:12px;border-radius:10px;font-size:.9rem;"></div>
+    </div>
+</div>
+
+<!-- ==================== PAGE 4: DIAGNOSIS HISTORY (Figure 16) ==================== -->
+<div id="page-history" class="page">
+    <h1 class="page-title">Diagnosis History</h1>
+    <p class="page-subtitle">Track patient diagnostic records over time to monitor treatment response.</p>
+
+    <div class="history-header">
+        <div class="input-group" style="flex-direction:row;align-items:center;gap:10px;">
+            <input type="text" id="searchHistory" placeholder="🔍 Search by Hospital No..." style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-family:inherit;width:260px;" oninput="filterHistory()">
+        </div>
+        <button class="btn btn-primary" onclick="loadHistory()">🔄 Refresh</button>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hospital No</th>
+                    <th>Age</th>
+                    <th>Test Type</th>
+                    <th>Prediction</th>
+                    <th>Confidence</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr><td colspan="6" class="empty-state">Loading records...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ===== NAVIGATION =====
+    let currentTestType = 'blood';
+    let allHistory = [];
+
+    function showPage(pageId, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        if (pageId === 'history') loadHistory();
+    }
+
+    function startAnalysis(type) {
+        showPage('predict', document.querySelectorAll('.nav-links button')[1]);
+        switchTestType(type, document.querySelectorAll('.test-type-tabs button')[type === 'blood' ? 0 : type === 'tissue' ? 1 : 2]);
+    }
+
+    // ===== PREDICTION (Figure 14) =====
+    const testLabels = { blood: 'Blood Smear Upload', tissue: 'Tissue Biopsy Upload', myeloma: 'Bone Marrow Upload' };
+
+    function switchTestType(type, btn) {
+        currentTestType = type;
+        document.querySelectorAll('.test-type-tabs button').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.getElementById('uploadCardTitle').textContent = testLabels[type];
+        // Reset preview
+        document.getElementById('imagePreview').innerHTML = '<div class="placeholder-text">📁 Click or drag to upload microscopic image<br><span style="font-size:.8rem;color:#475569">JPG, PNG up to 10MB</span></div>';
+        document.getElementById('predictFile').value = '';
+        document.getElementById('predictResult').innerHTML = 'Upload an image and click "Run Diagnostic" to see results here.';
+        document.getElementById('predictResult').style.color = '#64748b';
+    }
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').innerHTML = '<img src="' + e.target.result + '" alt="Uploaded smear"><div style="color:#94a3b8;font-size:.85rem;margin-top:4px;">' + input.files[0].name + '</div>';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function runPrediction() {
+        const fileInput = document.getElementById('predictFile');
+        const resultDiv = document.getElementById('predictResult');
+        const loader = document.getElementById('predictLoader');
+        const btnText = document.getElementById('predictBtnText');
+
+        if (fileInput.files.length === 0) { alert('Please select an image first!'); return; }
+
+        // Check if patient is registered (pull from reg form or prompt)
+        const hospital_no = document.getElementById('regHospitalNo').value;
+        if (!hospital_no) { alert('Please register the patient first (go to Register Patient tab).'); return; }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        loader.style.display = 'block'; btnText.style.display = 'none';
+
+        try {
+            const response = await fetch('/predict_' + currentTestType, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            const confValue = parseFloat(data.confidence);
+            let displayResult = 'No', resultColor = '#4ade80';
+
+            if (currentTestType === 'blood' && data.prediction === 'Leukemia') {
+                displayResult = 'Leukaemia Suspected'; resultColor = '#ef4444';
+            } else if (currentTestType === 'tissue' && (data.prediction === 'Lymphoma' || ['CLL','FL','MCL'].includes(data.prediction))) {
+                displayResult = 'Lymphoma Suspected (' + data.prediction + ')'; resultColor = '#ef4444';
+            } else if (currentTestType === 'myeloma' && data.prediction === 'Myeloma') {
+                displayResult = 'Myeloma Suspected'; resultColor = '#ef4444';
+            } else if (data.prediction === 'Normal') {
+                displayResult = 'Negative for Malignancy';
+            } else {
+                displayResult = data.prediction + ' Detected';
+            }
+
+            resultDiv.style.color = '';
+            resultDiv.innerHTML =
+                '<div style="font-size:.75rem;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Patient: ' + hospital_no + '</div>' +
+                '<div class="result-prediction" style="color:' + resultColor + '">' + displayResult + '</div>' +
+                '<div style="font-size:1.05rem;color:#94a3b8;margin-top:4px;">Confidence: <strong style="color:#fff">' + data.confidence + '</strong></div>' +
+                '<div class="confidence-bar"><div class="confidence-fill" style="width:0%;background:' + resultColor + '"></div></div>' +
+                '<div style="margin-top:16px;padding:14px;background:rgba(255,255,255,.03);border-radius:10px;font-size:.8rem;color:#64748b;">' +
+                    '<strong style="color:#94a3b8;">Diagnostic Info</strong><br>' +
+                    'Model: OncoTech Tri-Modal CNN v1.0<br>' +
+                    'Test Type: ' + currentTestType.toUpperCase() + '<br>' +
+                    'Raw Class: ' + data.prediction +
+                '</div>';
+
+            // Animate bar
+            setTimeout(() => { resultDiv.querySelector('.confidence-fill').style.width = confValue + '%'; }, 100);
+
+            // Save to DB
+            saveRecord({
+                hospital_no: hospital_no,
+                age: document.getElementById('regAge').value || '',
+                dob: document.getElementById('regDob').value || '',
+                address: document.getElementById('regAddress').value || '',
+                test_type: currentTestType.toUpperCase(),
+                prediction: displayResult,
+                confidence: data.confidence
+            });
+
+        } catch (error) {
+            resultDiv.style.color = '#ef4444';
+            resultDiv.innerHTML = '❌ Error: ' + error.message;
+        } finally {
+            loader.style.display = 'none'; btnText.style.display = 'inline';
+        }
+    }
+
+    // ===== PATIENT REGISTRATION (Figure 15) =====
+    async function registerPatient() {
+        const data = {
+            hospital_no: document.getElementById('regHospitalNo').value,
+            age: document.getElementById('regAge').value,
+            dob: document.getElementById('regDob').value,
+            address: document.getElementById('regAddress').value
+        };
+        if (!data.hospital_no || !data.age || !data.dob) {
+            showRegStatus('Please fill in Hospital Number, Age, and Date of Birth.', false); return;
+        }
+        try {
+            await fetch('/save_patient', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            showRegStatus('✅ Patient ' + data.hospital_no + ' registered successfully!', true);
+        } catch (e) {
+            showRegStatus('❌ Failed to save: ' + e.message, false);
+        }
+    }
+
+    function showRegStatus(msg, success) {
+        const el = document.getElementById('regStatus');
+        el.style.display = 'block';
+        el.style.background = success ? 'rgba(74,222,128,.1)' : 'rgba(239,68,68,.1)';
+        el.style.color = success ? '#86efac' : '#fca5a5';
+        el.textContent = msg;
+    }
+
+    function clearRegForm() {
+        ['regHospitalNo','regAge','regDob','regAddress'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('regStatus').style.display = 'none';
+    }
+
+    // ===== DIAGNOSIS HISTORY (Figure 16) =====
+    async function saveRecord(patientData) {
+        try {
+            await fetch('/save_record', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patientData) });
+        } catch (e) { console.error('Save failed:', e); }
+    }
+
+    async function loadHistory() {
+        const tbody = document.getElementById('historyTableBody');
+        try {
+            const res = await fetch('/get_history');
+            allHistory = await res.json();
+            renderHistory(allHistory);
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state" style="color:#ef4444;">Failed to load history.</td></tr>';
+        }
+    }
+
+    function renderHistory(data) {
+        const tbody = document.getElementById('historyTableBody');
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No diagnostic records found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map(r => {
+            const isPositive = r.prediction.includes('Suspected') || r.prediction.includes('Detected') || r.prediction.includes('YES');
+            return '<tr>' +
+                '<td style="font-weight:600;">' + r.hospital_no + '</td>' +
+                '<td>' + (r.age || '-') + '</td>' +
+                '<td>' + r.test_type + '</td>' +
+                '<td><span class="badge ' + (isPositive ? 'badge-positive' : 'badge-negative') + '">' + r.prediction + '</span></td>' +
+                '<td>' + r.confidence + '</td>' +
+                '<td style="color:#64748b;font-size:.85rem;">' + r.timestamp + '</td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    function filterHistory() {
+        const q = document.getElementById('searchHistory').value.toLowerCase();
+        renderHistory(allHistory.filter(r => r.hospital_no.toLowerCase().includes(q)));
+    }
+
+    // Init
+    window.onload = loadHistory;
+</script>
+</body>
+</html>
